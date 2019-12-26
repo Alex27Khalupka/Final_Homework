@@ -12,9 +12,6 @@ Run from root folder `python setup.py sdist bdist_wheel`
 
 After running build, run `python3.7 -m pip install --verbose --index-url https://test.pypi.org/simple/ --no-deps rss-reader-alex`
 
-## Launch
-
-Print all newsitems from RSS 
 
 ### From sources
 
