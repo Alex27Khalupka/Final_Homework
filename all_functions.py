@@ -50,7 +50,6 @@ def get_item(item, data):
 
 # printing parsed data to the console or to the file
 def print_parsed_data(parsed_data, output_path, limit):
-    print(limit)
     if not output_path:
         try:
             print("Feed: {}\n".format(parsed_data["feed"]))

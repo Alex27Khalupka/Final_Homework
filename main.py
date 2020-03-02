@@ -10,8 +10,9 @@ from all_functions import verbose
 from all_functions import caching_parsed_data
 from all_functions import read_cached_data
 from all_functions import convert_to_fb2
+from all_functions import get_image
 
-version = "Version 1.0.1"
+version = "Version 1.0.2"
 
 parser = argparse.ArgumentParser()
 parser.add_argument("echo", nargs="?", default="https://news.yahoo.com/rss/", help="echo URL")
@@ -42,9 +43,10 @@ if args.date:
         print("Cached data: ")
     else:
         print("Cached data has been writen to {}".format(output_path))
-    if read_cached_data(str(args.date), output_path, limit):
+    try:
+        read_cached_data(str(args.date), output_path, limit)
         exit()
-    else:
+    except Exception:
         print("Error: there is no cached data")
         exit()
 
@@ -102,3 +104,5 @@ elif args.json:
 else:
     verbose("printing parsed data", args.verbose)
     print_parsed_data(parsed_data, output_path, limit)
+    
+
