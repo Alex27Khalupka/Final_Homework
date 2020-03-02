@@ -3,7 +3,7 @@ import setuptools
 setuptools.setup(
     name="rss-reader",
     license="MIT",
-    version="0.4.1",
+    version="0.4.5",
     author="Aliaksandr Khalupka",
     author_email="alexkha2001@gmail.com",
     description="Python rss reader",

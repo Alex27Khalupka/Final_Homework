@@ -11,10 +11,10 @@ from all_functions import caching_parsed_data
 from all_functions import read_cached_data
 from all_functions import convert_to_fb2
 
-version = "Iteration 4, ver 1"
+version = "Version 1.0.1"
 
 parser = argparse.ArgumentParser()
-parser.add_argument("echo", default="something", help="echo URL")
+parser.add_argument("echo", nargs="?", default="https://news.yahoo.com/rss/", help="echo URL")
 parser.add_argument("--version", action="store_true", help="Print version info")
 parser.add_argument("--json", action="store_true", help="Print result as JSON in stdout")
 parser.add_argument("--verbose", action="store_true", help="Outputs verbose status messages")
@@ -31,15 +31,18 @@ if args.output_path:
     output_path = args.output_path
     output_path_json = args.output_path
     output_path_fb2 = output_path
-
-
+    
+limit = 0
+if args.limit:
+    limit = int(args.limit)
+    
 if args.date:
     verbose("reading cached data, date - " + args.date, args.verbose)
     if not output_path:
         print("Cached data: ")
     else:
-        print("Cached data has writen to {}".format(output_path))
-    if read_cached_data(str(args.date), output_path):
+        print("Cached data has been writen to {}".format(output_path))
+    if read_cached_data(str(args.date), output_path, limit):
         exit()
     else:
         print("Error: there is no cached data")
@@ -50,12 +53,12 @@ if args.version:
 
 verbose("requesting data from: " + args.echo, args.verbose)
 response = None
+
 try:
     response = urllib.request.urlopen(args.echo)
     verbose("url is opened, code: " + str(response.getcode()), args.verbose)
 except Exception:
     print("url open error")
-    response = None
     exit()
 
 verbose("reading data ", args.verbose)
@@ -63,8 +66,7 @@ rss_data = str(response.read())
 draft_items = rss_data.split("<item>")
 item_list = []
 item_amount = len(draft_items)
-if args.limit:
-    item_amount = int(args.limit) + 1
+
 
 verbose("parsing data ", args.verbose)
 item = dict()
@@ -85,9 +87,12 @@ parsed_data["items"] = item_list[1:]
 
 caching_parsed_data(parsed_data)
 
+if not args.limit:
+    limit = len(parsed_data["items"])
+
 if args.to_fb2:
-    convert_to_fb2(parsed_data, output_path_fb2)
-    print("converting to fb2 to {}".format(output_path))
+    print("converting to fb2 to {}".format(output_path_fb2))
+    convert_to_fb2(parsed_data, output_path_fb2, limit)
 
 elif args.json:
     verbose("converting to json", args.verbose)
@@ -96,4 +101,4 @@ elif args.json:
 
 else:
     verbose("printing parsed data", args.verbose)
-    print_parsed_data(parsed_data, output_path)
+    print_parsed_data(parsed_data, output_path, limit)

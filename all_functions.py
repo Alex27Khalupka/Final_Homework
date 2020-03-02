@@ -2,6 +2,7 @@ import base64
 import re
 import json
 import urllib.request
+import sqlite3
 
 
 def verbose(_str, verb):
@@ -13,14 +14,19 @@ def change_special_symbols(_str):
     _str = _str.replace("&amp;", "&")
     _str = _str.replace("&gt;", ">")
     _str = _str.replace("&lt;", "<")
+    _str = _str.replace("&#39;", "`")
+    _str = _str.replace("'", "`")
+    _str = _str.replace('"', "`")
     return _str
 
 
 # getting URL of image from data
 def get_image(data):
+    if "<description>" not in data:
+        return ""
     description = re.search("<description>" + ".+" + "</description>", data).group()
-    image = description.split("img src=")[1].split('"')
-    return image[1]
+    image = description.split("img src=")[1].split('`')[1].split("http")
+    return "http" + image[2]
 
 
 # getting item(something between tags) from data.
@@ -30,6 +36,10 @@ def get_item(item, data):
 
     open_item = "<" + item + ">"
     close_item = "</" + item + ">"
+
+    if open_item not in data:
+        return ""
+
     tmp = re.search(open_item + ".+" + close_item, data).\
         group().\
         replace(open_item, "").\
@@ -39,14 +49,15 @@ def get_item(item, data):
 
 
 # printing parsed data to the console or to the file
-def print_parsed_data(parsed_data, output_path):
+def print_parsed_data(parsed_data, output_path, limit):
+    print(limit)
     if not output_path:
         try:
             print("Feed: {}\n".format(parsed_data["feed"]))
         except Exception:
             print("Print error: nothing to print")
             pass
-        for item in parsed_data["items"]:
+        for item in parsed_data["items"][:limit]:
             print("Title: {}".format(item["title"]))
             print("Description: {}".format(item["description"]))
             print("Image: {}".format(item["image"]))
@@ -60,7 +71,7 @@ def print_parsed_data(parsed_data, output_path):
             except Exception:
                 print("Print error: nothing to print")
                 pass
-            for item in parsed_data["items"]:
+            for item in parsed_data["items"][:limit]:
                 file.write("Title: {}\n".format(item["title"]))
                 file.write("Description: {}\n".format(item["description"]))
                 file.write("Image: {}\n".format(item["image"]))
@@ -78,41 +89,54 @@ def date_convert(date):
     return str(year + month + number)
 
 
-# caching parsed data to json files by dates
-# they will be placed in working directory
 def caching_parsed_data(parsed_data):
+    conn = sqlite3.connect('date_database.db')
+    cursor = conn.cursor()
     for item in parsed_data["items"]:
-        date = date_convert(item["date"]) + ".json"
-        try:
-            with open(date, "r") as file:
-                cached_data = json.loads(file.read())
+        date = "'" + date_convert(item["date"]) + "'"
+        cursor.execute("create table if not exists" + date + "(title varchar(255), description varchar(255), "
+                                                             "image varchar(255), link varchar(255), "
+                                                             "date varchar(255));")
+        conn.commit()
+        cursor.execute("select * from " + date + ";")
+        cached_data = cursor.fetchall()
+        title_list = list()
+        for cached_items in cached_data:
+            title_list.append(cached_items[0])
+        
+        if item["title"] not in title_list:
+            cursor.execute("insert into " + date + "(title, description, image, link, date) values ('{}', '{}', "
+                                                   "'{}', '{}', '{}');".format(item["title"],
+                                                                               item["description"],
+                                                                               item["image"],
+                                                                               item["link"],
+                                                                               item["date"]))
 
-            if item not in cached_data["items"]:
-                cached_data["items"].append(item)
-
-            with open(date, "w") as write_file:
-                json.dump(cached_data, write_file)
-
-        except Exception:
-            dct_to_write = dict()
-            dct_to_write["feed"] = parsed_data["feed"]
-            dct_to_write["items"] = []
-            dct_to_write["items"].append(item)
-
-            with open(date, "w") as write_file:
-                json.dump(dct_to_write, write_file)
+            conn.commit()
+    conn.close()
 
 
-def read_cached_data(date, output_path):
-    date += ".json"
-    try:
-        with open(date, "r") as file:
-            tmp = file.read()
-            cached_data = json.loads(tmp)
-    except Exception:
-        return False
-    print_parsed_data(cached_data, output_path)
-    return True
+def read_cached_data(date, output_path, limit):
+    conn = sqlite3.connect('date_database.db')
+    cursor = conn.cursor()
+    date = "'" + date + "'"
+    cursor.execute("select * from " + date)
+    data = cursor.fetchall()
+    cached_data = dict()
+    cached_data["feed"] = ""
+    cached_data["items"] = list()
+    if not limit:
+        limit = len(data)
+    
+    for item in data:
+        dct_news = dict()
+        dct_news["title"] = item[0]
+        dct_news["description"] = item[1]
+        dct_news["image"] = item[2]
+        dct_news["link"] = item[3]
+        dct_news["date"] = item[4]
+        cached_data["items"].append(dct_news)
+    print_parsed_data(cached_data, output_path, limit)
 
 
 # creating tags to convert to fb2 format
@@ -130,7 +154,7 @@ def create_tags(data, i):
 
 # converting to fb2 format
 # creating constant tags
-def convert_to_fb2(parsed_data, output_path):
+def convert_to_fb2(parsed_data, output_path, limit):
     with open(output_path, "w") as file:
         begin = '<?xml version="1.0" encoding="windows-1251"?>' \
                '<FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0" xmlns:l="http://www.w3.org/1999/xlink">'
@@ -140,7 +164,8 @@ def convert_to_fb2(parsed_data, output_path):
         data_in_tags = ""
         image_list = list()
         i = 0
-        for item in parsed_data["items"]:
+        print("getting images")
+        for item in parsed_data["items"][:limit]:
             if item["image"]:
                 image_list.append(urllib.request.urlopen(item["image"]).read())
                 i += 1
@@ -149,10 +174,10 @@ def convert_to_fb2(parsed_data, output_path):
         file.write(data_in_tags)
         file.write("</body>")
         for i in range(len(image_list)):
-            file.write('<binary id="pic' + str(i) + '.jpg" content-type="image/jpeg">')
+            file.write('<binary id="pic' + str(i + 1) + '.jpg" content-type="image/jpeg">')
             file.write(str(base64.b64encode(image_list[i])).strip("b'"))
             file.write('</binary>')
-            i += 1
+        print("Data was successfully converted. Amount of news: {}".format(limit))
         file.write(end)
 
 

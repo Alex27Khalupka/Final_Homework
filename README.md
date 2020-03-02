@@ -1,31 +1,27 @@
 # One-shot command-line RSS reader
 
-Version 4.1.3
+Version 1.0.1
 
-## Build
+## About project
 
-Update build tools before installation `python3 -m pip install --upgrade pip setuptools wheel`
+Objective of the project is to create an utility that parses rss feed, caches parsed data and converts it to fb2 format.
 
-Run from root folder `python setup.py sdist bdist_wheel`
+## Getting started
 
-##  Install 
+### Installing
 
-After running build, run `python3.7 -m pip install --verbose --index-url https://test.pypi.org/simple/ --no-deps rss-reader-alex`
+Clone this repository:
+  `git clone https://github.com/Alex27Khalupka/Pyhon-Django-Project.git`
+
+### Working with utility
+
+To parse data from [https://news.yahoo.com/rss/](https://news.yahoo.com/rss/) use: `python3 main.py`
 
 
-### From sources
+To parse data from any website use: `python3 main.py 'web_site_url'` (It may not work :) )
 
-`python3 main.py https://news.yahoo.com/rss`
 
-### From python packages
-
-`python3 main.py rss_reader https://news.yahoo.com/rss`
-
-### From console
-
-`rss-reader https://news.yahoo.com/rss`
-
-Options
+####Options
 
 Print version
 `--version`
@@ -37,7 +33,7 @@ Limit printed data
 `--limit 42`
 
 Display cached data for specific day
-`--date 20191214`
+`--date "20191214"`
 
 Covert to fb2
 `--to-fb2`
@@ -45,7 +41,9 @@ Covert to fb2
 Output path
 `--output-path ./dir/file`
 
+Options can work together
 
-## Data cache
 
-Converting data to json format and writing it to YYYYMMDD.json.
+#### Data caching
+
+Writing data to a database "date_database.sqlite3" (adding data to a table called "YYYYMMDD"(according to publication date)).
